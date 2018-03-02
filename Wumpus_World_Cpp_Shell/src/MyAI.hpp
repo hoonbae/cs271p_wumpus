@@ -84,22 +84,27 @@ public:
     Action              turn_right();
     Action              move_cw(bool stench, bool breeze, bool glitter, bool bump, bool scream);
     Action              move_countercw(bool stench, bool breeze, bool glitter, bool bump, bool scream);
+    Action              go_home();
 
 	// Setters
 	void 	set_shot_to_true();
 	void 	set_gold_to_true();
   void  increment_bump_turn_count();
   void  decrement_bump_turn_count();
-  bool  is_dir_cw(bool is_clockwise);
-  bool  is_go_home_mode(bool is_home);
+  void  is_dir_cw(bool is_clockwise);
+  void  is_go_home_mode(bool is_home);
+  void  is_pass_home(bool pass_home);
+  void  increment_switch_dir();
+
 
 	// Getters
 	bool	get_shot_status();
 	bool	get_gold_status();
-  int   get_turn_count();
+  int   get_bump_turn_count();
   bool  get_dir_cw_status();
   bool  get_go_home_mode();
   bool  get_pass_home();
+  int   get_switch_dir();
 
 private:
 
@@ -109,6 +114,7 @@ private:
   bool  m_dir_cw;
   bool  m_pass_home;
   int   m_bump_turn_count;
+  int   m_switch_dir;
 
   bool    m_go_home_mode;
 
