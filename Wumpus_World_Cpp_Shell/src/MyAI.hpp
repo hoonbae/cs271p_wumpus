@@ -82,58 +82,44 @@ public:
     Action              move_forward(bool bump);
     Action              turn_left();
     Action              turn_right();
+    Action              move_cw(bool stench, bool breeze, bool glitter, bool bump, bool scream);
+    Action              move_countercw(bool stench, bool breeze, bool glitter, bool bump, bool scream);
 
 	// Setters
-	void 	increment_turn_dir_l();
-	void	increment_go_back_count();
 	void 	set_shot_to_true();
 	void 	set_gold_to_true();
-	void 	set_go_fwd(bool gofwd);
-	void 	set_go_back(bool goback);
-	void	set_go_up(bool goup);
+  void  increment_bump_turn_count();
+  void  decrement_bump_turn_count();
+  bool  is_dir_cw(bool is_clockwise);
+  bool  is_go_home_mode(bool is_home);
 
 	// Getters
-	int 	get_turn_dir_l();
-	int     get_go_back_count();
 	bool	get_shot_status();
 	bool	get_gold_status();
-	bool	get_fwd_status();
-	bool	get_go_back_status();
-	bool	get_go_up_status();
+  int   get_turn_count();
+  bool  get_dir_cw_status();
+  bool  get_go_home_mode();
+  bool  get_pass_home();
 
 private:
 
 	// Agent Variables
-	int 	m_turn_dir_l;
-	int     m_go_back_count;
 	bool 	m_shot_status;
 	bool	m_gold_status;
-	bool	m_go_fwd_status;
-	bool	m_go_back_status;
-	bool	m_go_up_status;
-    bool    m_go_home_mode;
+  bool  m_dir_cw;
+  bool  m_pass_home;
+  int   m_bump_turn_count;
 
-    Location    m_cur_location;
-    Direction   m_cur_direction;
-    Board       m_board;
-    vector<Action> m_actions_taken;
+  bool    m_go_home_mode;
+
+  Location    m_cur_location;
+  Direction   m_cur_direction;
+  Board       m_board;
+  vector<Action> m_actions_taken;
 
 	// ======================================================================
 	// YOUR CODE ENDS
 	// ======================================================================
 };
-
-
-/*
-	Minimal AI - Design Outline
-
-		Agent moves in a single direction. If agent senses...
-			- stench: shoot arrow
-					if scream: keep going
-					else: turn around, go back to start, climb out
-			- breeze: turn around, go back to start, climb out
-			- glitter: grab gold, turn around, go back to start, climb out
-			- bump: turn around, go back to start, climb out
-*/
 
 #endif

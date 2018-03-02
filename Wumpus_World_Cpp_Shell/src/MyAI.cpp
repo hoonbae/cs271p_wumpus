@@ -25,14 +25,13 @@ MyAI::MyAI() : Agent(), m_cur_location(0, 0)
 {
     m_cur_direction = Direction::right;
     m_board.assign(MAX_SZ, vector<State>(MAX_SZ));
-	m_turn_dir_l = 0;
-	m_shot_status = false;
-	m_gold_status = false;
-	m_go_fwd_status = true;
-	m_go_back_status = false;
-	m_go_up_status = false;
-	m_go_back_count = 0;
     m_go_home_mode = false;
+    m_turn_count = 0;
+    m_gold_status = false;
+    m_shot_status = false;
+    m_dir_cw = true;
+    m_pass_home = false;
+
 }
 
 Agent::Action MyAI::getAction
@@ -50,137 +49,87 @@ Agent::Action MyAI::getAction
     set_breeze(breeze);
     // =====================================
 
-	// agent target dir - right
-	// agent keep going forward until stench, glitter, breeze, or bump
-	bool gofwd = get_fwd_status();
-	while(gofwd)
-	{
-		if (stench)
-		{
-			bool is_shot = get_shot_status();
-			if (is_shot)
-			{
-				set_go_fwd(false);
-				set_go_back(true);
-				break;
-			} else {
-				set_shot_to_true();
-				return SHOOT;
-			}
-		} else if (glitter) {									// if glitter - there is gold - grab ...
-			set_go_fwd(false);
-			set_go_back(true);
-			set_gold_to_true();
-			return GRAB;
-		} else if (breeze) {
-			set_go_fwd(false);
-			set_go_back(true);
-			break;
-		} else if (bump) {
-			set_go_fwd(false);
-			set_go_back(true);
-			break;
-		} else {
-			return FORWARD;
-		}
-	}
+  bool go_home_mode = get_go_home_mode();
+  if (!go_home_mode) {
+    if (get_dir_cw_status) {
+      // move clockwise
+    } else {
+      // move counter clockwise
+    }
+  } else {
 
-	bool goback = get_go_back_status();
-	int  goback_count = get_go_back_count();
-	while(goback && goback_count == 0)
-	{
-		int turn_count = get_turn_dir_l();
-		if (turn_count < 2)
-		{
-			increment_turn_dir_l();
-			return TURN_LEFT;
-		} else {
-			bool is_gold = get_gold_status();
-			if (bump && is_gold)
-			{
-				return CLIMB;
-			}
-			if(bump)
-			{
-				set_go_up(true);
-				set_go_back(false);
-				increment_go_back_count();
-				return TURN_RIGHT;
-			}
-			return FORWARD;
-		}
-	}
+  }
 
-
-	while(goback && goback_count == 1)
-	{
-		int turn_count = get_turn_dir_l();
-		bool is_gold = get_gold_status();
-		if (turn_count < 4)
-		{
-			if (is_gold)
-			{
-				increment_turn_dir_l();
-				return TURN_RIGHT;
-			} else {
-				increment_turn_dir_l();
-				increment_turn_dir_l();
-				return TURN_RIGHT;
-			}
-		} else {
-			if(bump)
-			{
-				return CLIMB;
-			}
-			return FORWARD;
-		}
-	}
-
-
-	bool goup = get_go_up_status();
-	while (goup)
-	{
-		if (stench)
-		{
-			bool is_shot = get_shot_status();
-			if (is_shot)
-			{
-				set_go_up(false);
-				set_go_back(true);
-				return TURN_RIGHT;
-			} else {
-				set_shot_to_true();
-				return SHOOT;
-			}
-		} else if (glitter) {
-			set_go_up(false);
-			set_go_back(true);
-			set_gold_to_true();
-			return GRAB;
-		} else if (breeze) {
-			set_go_up(false);
-			set_go_back(true);
-			return TURN_RIGHT;
-		} else if (bump) {
-			set_go_up(false);
-			set_go_back(true);
-			return TURN_RIGHT;
-		} else {
-			return FORWARD;
-		}
-	}
 }
 
 
 
-void MyAI::increment_turn_dir_l()
-{
-	m_turn_dir_l++;
+Agent::Action MyAI::move_cw(bool stench, bool breeze, bool glitter, bool bump, bool scream) {
+  if (stench || breeze) {
+    is_dir_cw(false);
+  }
+  if (bump) {
+    int bump_turn_count = get_bump_turn_count();
+    if(bump_turn_count == 3) {
+      return CLIMB;
+    }
+    increment_bump_turn_count();
+    return turn_right();
+  }
+  if (glitter) {
+    set_gold_to_true();
+    is_go_home_mode(true);
+    return GRAB;
+  }
+  return move_forward(bump);
 }
-void MyAI::increment_go_back_count()
-{
-	m_go_back_count++;
+
+Agent::Action MyAI::move_countercw(bool stench, bool breeze, bool glitter, bool bump, bool scream) {
+  // just changed direcetion?
+
+  if (stench || breeze) {
+    is_go_home_mode(true);
+  }
+  if (bump) {
+    int bump_turn_count = get_bump_turn_count();
+    bool is_pass_home = get_pass_home();
+
+    // moving counter clockwise but haven't passed by home yet
+    if (bump_turn_count > 0 && !is_pass_home) {
+      decrement_bump_turn_count();
+      return turn_left();
+    }
+
+    // moving counter clockwise - landed home, first time passing
+    if (bump_turn_count == 0 && !is_pass_home) {
+      increment_bump_turn_count();
+      is_pass_home(true);
+      return turn_left();
+    }
+
+    if (bump_turn_count > 3 && is_pass_home) { // ?
+      is_go_home_mode(true);
+      // ?? return something here?
+    }
+
+    // moving counter clockwise - have passed home
+    if (bump_turn_count > 0 && is_pass_home) {
+      increment_bump_turn_count();
+      return turn_left();
+    }
+  }
+  if (glitter) {
+    set_gold_to_true();
+    is_go_home_mode(true);
+    return GRAB;
+  }
+  return move_forward(bump);
+
 }
+
+
+
+// Setters
 void MyAI::set_shot_to_true()
 {
 	m_shot_status = true;
@@ -189,28 +138,24 @@ void MyAI::set_gold_to_true()
 {
 	m_gold_status = true;
 }
-void MyAI::set_go_fwd(bool gofwd)
-{
-	m_go_fwd_status = gofwd;
+void  MyAI::increment_bump_turn_count() {
+  m_turn_count++;
 }
-void MyAI::set_go_back(bool goback)
-{
-	m_go_back_status = goback;
+void  MyAI::decrement_bump_turn_count() {
+  m_turn_count--;
+}
+bool  MyAI::is_dir_cw(bool is_clockwise) {
+  m_dir_cw = is_clockwise;
+}
+bool  MyAI::is_go_home_mode(bool is_home) {
+  m_go_home_mode = is_home;
+}
+bool MyAI::is_pass_home(bool pass_home) {
+  m_pass_home = pass_home;
 }
 
-void MyAI::set_go_up(bool goup)
-{
-	m_go_up_status = goup;
-}
 
-int MyAI::get_turn_dir_l()
-{
-	return m_turn_dir_l;
-}
-int MyAI::get_go_back_count()
-{
-	return m_go_back_count;
-}
+// Getters
 bool MyAI::get_shot_status()
 {
 	return m_shot_status;
@@ -219,17 +164,17 @@ bool MyAI::get_gold_status()
 {
 	return m_gold_status;
 }
-bool MyAI::get_fwd_status()
-{
-	return m_go_fwd_status;
+int   MyAI::get_bump_turn_count() {
+  return m_bump_turn_count;
 }
-bool MyAI::get_go_back_status()
-{
-	return m_go_back_status;
+bool  MyAI::get_dir_cw_status() {
+  return m_dir_cw;
 }
-bool MyAI::get_go_up_status()
-{
-	return m_go_up_status;
+bool  MyAI::get_go_home_mode() {
+  return m_go_home_mode;
+}
+bool MyAI::get_pass_home() {
+  return m_pass_home;
 }
 
 const Board& MyAI::get_board() {
