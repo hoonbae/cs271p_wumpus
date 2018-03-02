@@ -32,6 +32,7 @@ MyAI::MyAI() : Agent(), m_cur_location(0, 0)
 	m_go_back_status = false;
 	m_go_up_status = false;
 	m_go_back_count = 0;
+    m_go_home_mode = false;
 }
 
 Agent::Action MyAI::getAction
@@ -290,6 +291,7 @@ Agent::Action MyAI::move_forward(bool bump) {
                 break;
         }
     }
+	if (!m_go_home_mode) m_actions_taken.push_back(Action::FORWARD);
     return Action::FORWARD;
 }
 
@@ -311,6 +313,7 @@ Agent::Action MyAI::turn_left() {
             m_cur_direction = Direction::down;
             break;
     }
+    if (!m_go_home_mode) m_actions_taken.push_back(Action::TURN_LEFT);
     return Action::TURN_LEFT;
 }
 
@@ -332,5 +335,6 @@ Agent::Action MyAI::turn_right() {
             m_cur_direction = Direction::down;
             break;
     }
+    if (!m_go_home_mode) m_actions_taken.push_back(Action::TURN_RIGHT);
     return Action::TURN_RIGHT;
 }

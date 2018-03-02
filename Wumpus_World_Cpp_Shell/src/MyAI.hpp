@@ -66,7 +66,7 @@ public:
 	// ======================================================================
 	// YOUR CODE BEGINS
 	// ======================================================================
-    const Board&        get_board();
+    const Board&        get_board(); // figure out current size of world (minimum: 4x4, maximum: 7x7)
 
     Location            get_cur_location();
     Direction           get_cur_direction();
@@ -111,11 +111,12 @@ private:
 	bool	m_go_fwd_status;
 	bool	m_go_back_status;
 	bool	m_go_up_status;
-
+    bool    m_go_home_mode;
 
     Location    m_cur_location;
     Direction   m_cur_direction;
     Board       m_board;
+    vector<Action> m_actions_taken;
 
 	// ======================================================================
 	// YOUR CODE ENDS
