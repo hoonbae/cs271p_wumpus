@@ -19,8 +19,12 @@
 
 #include "MyAI.hpp"
 
-MyAI::MyAI() : Agent()
+#define MAX_SZ 10
+
+MyAI::MyAI() : Agent(), m_cur_location(0, 0)
 {
+    m_cur_direction = Direction::right;
+    m_board.assign(MAX_SZ, vector<State>(MAX_SZ));
 	m_turn_dir_l = 0;
 	m_shot_status = false;
 	m_gold_status = false;
@@ -39,6 +43,12 @@ Agent::Action MyAI::getAction
 	bool scream
 )
 {
+    // =====================================
+    // DO NOT EDIT
+    set_stench(stench);
+    set_breeze(breeze);
+    // =====================================
+
 	// agent target dir - right
 	// agent keep going forward until stench, glitter, breeze, or bump
 	bool gofwd = get_fwd_status();
@@ -219,4 +229,108 @@ bool MyAI::get_go_back_status()
 bool MyAI::get_go_up_status()
 {
 	return m_go_up_status;
+}
+
+const Board& MyAI::get_board() {
+	return m_board;
+}
+
+Location MyAI::get_cur_location() {
+	return m_cur_location;
+}
+
+Direction MyAI::get_cur_direction() {
+	return m_cur_direction;
+}
+
+bool MyAI::location_safe(const Location &location) {
+	return m_board[location.x][location.y].safe;
+}
+
+bool MyAI::location_visited(const Location &location) {
+	return m_board[location.x][location.y].visited;
+}
+
+bool MyAI::cur_location_safe() {
+    return m_board[m_cur_location.x][m_cur_location.y].safe;
+}
+
+bool MyAI::cur_location_visited() {
+    return m_board[m_cur_location.x][m_cur_location.y].visited;
+}
+
+void MyAI::set_breeze(bool breeze) {
+    m_board[m_cur_location.x][m_cur_location.y].breeze = breeze;
+}
+
+void MyAI::set_stench(bool stench) {
+    m_board[m_cur_location.x][m_cur_location.y].stench = stench;
+}
+
+Agent::Action MyAI::move_forward(bool bump) {
+    if (!bump) {
+        m_board[m_cur_location.x][m_cur_location.y].visited = true;
+        m_board[m_cur_location.x][m_cur_location.y].safe = true;
+
+        switch (m_cur_direction) {
+            case Direction::up:
+                m_cur_location.x++;
+                break;
+
+            case Direction::down:
+                m_cur_location.x--;
+                break;
+
+            case Direction::left:
+                m_cur_location.y--;
+                break;
+
+            case Direction::right:
+                m_cur_location.y++;
+                break;
+        }
+    }
+    return Action::FORWARD;
+}
+
+Agent::Action MyAI::turn_left() {
+    switch (m_cur_direction) {
+        case Direction::up:
+            m_cur_direction = Direction::left;
+            break;
+
+        case Direction::right:
+            m_cur_direction = Direction::up;
+            break;
+
+        case Direction::down:
+            m_cur_direction = Direction::right;
+            break;
+
+        case Direction::left:
+            m_cur_direction = Direction::down;
+            break;
+    }
+    return Action::TURN_LEFT;
+}
+
+Agent::Action MyAI::turn_right() {
+    switch (m_cur_direction) {
+        case Direction::up:
+            m_cur_direction = Direction::right;
+            break;
+
+        case Direction::left:
+            m_cur_direction = Direction::up;
+            break;
+
+        case Direction::down:
+            m_cur_direction = Direction::left;
+            break;
+
+        case Direction::right:
+            m_cur_direction = Direction::down;
+            break;
+    }
+    return Action::TURN_RIGHT;
 }

@@ -21,6 +21,33 @@
 #define MYAI_LOCK
 
 #include "Agent.hpp"
+#include <vector>
+#include <utility>
+
+using std::vector;
+using std::pair;
+
+struct State {
+    bool visited = false;
+    bool safe = false;
+    bool breeze = false;
+    bool stench = false;
+};
+
+struct Location {
+    Location(int x_, int y_) :x(x_), y(y_) {}
+    int x = 0;
+    int y = 0;
+};
+
+enum class Direction {
+    left,
+    right,
+    up,
+    down
+};
+
+typedef vector<vector<State>> Board;
 
 class MyAI : public Agent
 {
@@ -39,6 +66,22 @@ public:
 	// ======================================================================
 	// YOUR CODE BEGINS
 	// ======================================================================
+    const Board&        get_board();
+
+    Location            get_cur_location();
+    Direction           get_cur_direction();
+
+    bool                location_safe(const Location &location);
+    bool                location_visited(const Location &location);
+    bool                cur_location_safe();
+    bool                cur_location_visited();
+
+    void                set_breeze(bool breeze);
+    void                set_stench(bool stench);
+
+    Action              move_forward(bool bump);
+    Action              turn_left();
+    Action              turn_right();
 
 	// Setters
 	void 	increment_turn_dir_l();
@@ -51,7 +94,7 @@ public:
 
 	// Getters
 	int 	get_turn_dir_l();
-	int   get_go_back_count();
+	int     get_go_back_count();
 	bool	get_shot_status();
 	bool	get_gold_status();
 	bool	get_fwd_status();
@@ -62,13 +105,17 @@ private:
 
 	// Agent Variables
 	int 	m_turn_dir_l;
-	int   m_go_back_count;
+	int     m_go_back_count;
 	bool 	m_shot_status;
 	bool	m_gold_status;
 	bool	m_go_fwd_status;
 	bool	m_go_back_status;
 	bool	m_go_up_status;
 
+
+    Location    m_cur_location;
+    Direction   m_cur_direction;
+    Board       m_board;
 
 	// ======================================================================
 	// YOUR CODE ENDS
