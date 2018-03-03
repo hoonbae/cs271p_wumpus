@@ -35,6 +35,7 @@ struct State {
 };
 
 struct Location {
+    Location() = default;
     Location(int x_, int y_) :x(x_), y(y_) {}
     int x = 0;
     int y = 0;
@@ -53,6 +54,8 @@ class MyAI : public Agent
 {
 public:
 	MyAI ( void );
+
+    ~MyAI();
 
 	Action getAction
 	(

@@ -21,8 +21,9 @@
 
 #define MAX_SZ 10
 
-MyAI::MyAI() : Agent(), m_cur_location(0, 0)
+MyAI::MyAI() : Agent()
 {
+    m_cur_location = Location(0, 0);
     m_cur_direction = Direction::right;
     m_board.assign(MAX_SZ, vector<State>(MAX_SZ));
     m_go_home_mode = false;
@@ -35,6 +36,11 @@ MyAI::MyAI() : Agent(), m_cur_location(0, 0)
     m_first_action = true;
     m_change_dir = false;
 
+}
+
+MyAI::~MyAI() {
+    m_board.clear();
+    m_actions_taken.clear();
 }
 
 Agent::Action MyAI::getAction

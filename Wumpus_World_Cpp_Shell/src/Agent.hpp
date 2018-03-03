@@ -26,7 +26,7 @@
 class Agent
 {
 public:
-
+	virtual ~Agent() = default;
 	// Actuators
 	enum Action
 	{
