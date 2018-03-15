@@ -229,19 +229,19 @@ Agent::Action MyAI::move_forward(bool bump) {
 
         switch (m_cur_direction) {
             case Direction::up:
-                m_cur_location.x++;
+                if (m_cur_location.x < MAX_SZ) m_cur_location.x++;
                 break;
 
             case Direction::down:
-                m_cur_location.x--;
+                if (m_cur_location.x > 0) m_cur_location.x--;
                 break;
 
             case Direction::left:
-                m_cur_location.y--;
+                if (m_cur_location.x > 0)m_cur_location.y--;
                 break;
 
             case Direction::right:
-                m_cur_location.y++;
+                if (m_cur_location.y < MAX_SZ) m_cur_location.y++;
                 break;
         }
     }

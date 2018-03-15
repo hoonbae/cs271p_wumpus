@@ -35,10 +35,10 @@ struct State {
 };
 
 struct Location {
-    Location() = default;
-    Location(int x_, int y_) :x(x_), y(y_) {}
-    int x = 0;
-    int y = 0;
+    Location() : x(0), y(0) {}
+    Location(int x_, int y_) : x(x_), y(y_) {}
+    int x;
+    int y;
 };
 
 enum class Direction {
@@ -69,10 +69,12 @@ public:
 	// ======================================================================
 	// YOUR CODE BEGINS
 	// ======================================================================
-    const Board&        get_board(); // figure out current size of world (minimum: 4x4, maximum: 7x7)
+    // const Board&        get_board(); // figure out current size of world (minimum: 4x4, maximum: 7x7)
 
     Location            get_cur_location();
     Direction           get_cur_direction();
+    const Board&        get_board();
+
 
     bool                location_safe(const Location &location);
     bool                location_visited(const Location &location);
