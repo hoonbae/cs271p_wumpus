@@ -198,16 +198,27 @@ Direction MyAI::get_cur_direction() {
 	return m_cur_direction;
 }
 
-bool MyAI::location_safe(const Location &location) {
-	return m_board[location.x][location.y].safe;
+Safety MyAI::location_safe(const Location &location) {
+    if (m_board[location.x][location.y].safety == Safety::safe ||
+        m_board[location.x][location.y].safety == Safety::danger)
+        return m_board[location.x][location.y].safety;
+
+    if (has_visited_neighbors(location)) {
+        if (breeze_in_visited_neighbors(location) ||
+            stench_in_visited_neighbors(location))
+            set_safety(location, Safety::danger);
+            return Safety::danger;
+    }
+
+    return Safety::maybe;
 }
 
 bool MyAI::location_visited(const Location &location) {
 	return m_board[location.x][location.y].visited;
 }
 
-bool MyAI::cur_location_safe() {
-    return m_board[m_cur_location.x][m_cur_location.y].safe;
+Safety MyAI::cur_location_safe() {
+    return m_board[m_cur_location.x][m_cur_location.y].safety;
 }
 
 bool MyAI::cur_location_visited() {
@@ -225,11 +236,11 @@ void MyAI::set_stench(bool stench) {
 Agent::Action MyAI::move_forward(bool bump) {
     if (!bump) {
         m_board[m_cur_location.x][m_cur_location.y].visited = true;
-        m_board[m_cur_location.x][m_cur_location.y].safe = true;
+        m_board[m_cur_location.x][m_cur_location.y].safety = Safety::safe;
 
         switch (m_cur_direction) {
             case Direction::up:
-                if (m_cur_location.x < MAX_SZ) m_cur_location.x++;
+                if (m_cur_location.x < m_board.size()) m_cur_location.x++;
                 break;
 
             case Direction::down:
@@ -241,9 +252,11 @@ Agent::Action MyAI::move_forward(bool bump) {
                 break;
 
             case Direction::right:
-                if (m_cur_location.y < MAX_SZ) m_cur_location.y++;
+                if (m_cur_location.y < m_board.front().size()) m_cur_location.y++;
                 break;
         }
+    } else {
+        process_bump();
     }
 	if (!m_go_home_mode) m_actions_taken.push_back(Action::FORWARD);
     return Action::FORWARD;
@@ -291,4 +304,29 @@ Agent::Action MyAI::turn_right() {
     }
     if (!m_go_home_mode) m_actions_taken.push_back(Action::TURN_RIGHT);
     return Action::TURN_RIGHT;
+}
+
+void MyAI::process_bump() {
+    if (m_cur_direction == Direction::right) {
+        for (auto &col : m_board) col.resize(m_cur_location.y + 1);
+    } else if (m_cur_direction == Direction::up) {
+        m_board.resize(m_cur_location.x + 1);
+    }
+}
+
+void MyAI::set_safety(const Location &location, Safety safety) {
+
+}
+
+// TODO
+bool MyAI::has_visited_neighbors(const Location &location) {
+    return false;
+}
+
+bool MyAI::breeze_in_visited_neighbors(const Location &location) {
+    return false;
+}
+
+bool MyAI::stench_in_visited_neighbors(const Location &location) {
+    return false;
 }

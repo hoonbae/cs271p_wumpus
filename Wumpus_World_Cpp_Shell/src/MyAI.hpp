@@ -27,11 +27,18 @@
 using std::vector;
 using std::pair;
 
+enum class Safety {
+    safe,
+    danger,
+    maybe
+};
+
 struct State {
+    State() : visited(false), breeze(false), stench(false), safety(Safety::maybe) {}
     bool visited = false;
-    bool safe = false;
     bool breeze = false;
     bool stench = false;
+    Safety safety = Safety::maybe;
 };
 
 struct Location {
@@ -75,14 +82,19 @@ public:
     Direction           get_cur_direction();
     const Board&        get_board();
 
-
-    bool                location_safe(const Location &location);
+    Safety              location_safe(const Location &location);
     bool                location_visited(const Location &location);
-    bool                cur_location_safe();
+    Safety              cur_location_safe();
     bool                cur_location_visited();
 
     void                set_breeze(bool breeze);
     void                set_stench(bool stench);
+	void				set_safety(const Location &location, Safety safety);
+
+    void                process_bump();
+	bool				has_visited_neighbors(const Location &location);
+	bool				breeze_in_visited_neighbors(const Location &location);
+	bool				stench_in_visited_neighbors(const Location &location);
 
     Action              move_forward(bool bump);
     Action              turn_left();
