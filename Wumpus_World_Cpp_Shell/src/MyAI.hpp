@@ -76,25 +76,33 @@ public:
 	// ======================================================================
 	// YOUR CODE BEGINS
 	// ======================================================================
-    // const Board&        get_board(); // figure out current size of world (minimum: 4x4, maximum: 7x7)
-
+    Location            left(const Location &location);
+    Location            right(const Location &location);
+    Location            up(const Location &location);
+    Location            down(const Location &location);
     Location            get_cur_location();
     Direction           get_cur_direction();
     const Board&        get_board();
+    const State&        get_state(const Location &location);
 
     Safety              location_safe(const Location &location);
     bool                location_visited(const Location &location);
     Safety              cur_location_safe();
     bool                cur_location_visited();
+    bool                has_visited_left_neighbor(const Location &location);
+    bool                has_visited_right_neighbor(const Location &location);
+    bool                has_visited_up_neighbor(const Location &location);
+    bool                has_visited_down_neighbor(const Location &location);
 
     void                set_breeze(bool breeze);
     void                set_stench(bool stench);
+	void 				set_visited();
 	void				set_safety(const Location &location, Safety safety);
 
     void                process_bump();
-	bool				has_visited_neighbors(const Location &location);
-	bool				breeze_in_visited_neighbors(const Location &location);
-	bool				stench_in_visited_neighbors(const Location &location);
+	bool				all_neighbors_visited(const Location &location);
+	bool				has_visited_and_not_breezy_neighbors(const Location &location);
+	bool				has_visited_and_not_stenchy_neighbors(const Location &location);
 
     Action              move_forward(bool bump);
     Action              turn_left();

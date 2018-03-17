@@ -18,6 +18,7 @@
 // ======================================================================
 
 #include "MyAI.hpp"
+#include "exception"
 
 #define MAX_SZ 10
 
@@ -54,6 +55,7 @@ Agent::Action MyAI::getAction
 {
     // =====================================
     // DO NOT EDIT
+    set_visited();
     set_stench(stench);
     set_breeze(breeze);
     // =====================================
@@ -190,6 +192,13 @@ const Board& MyAI::get_board() {
 	return m_board;
 }
 
+const State& MyAI::get_state(const Location &location) {
+    if (location.x < 0 || location.x >= m_board.size() ||
+        location.y < 0 || location.y >= m_board.front().size())
+        throw std::runtime_error("bad location");
+    return m_board[location.x][location.y];
+}
+
 Location MyAI::get_cur_location() {
 	return m_cur_location;
 }
@@ -203,11 +212,9 @@ Safety MyAI::location_safe(const Location &location) {
         m_board[location.x][location.y].safety == Safety::danger)
         return m_board[location.x][location.y].safety;
 
-    if (has_visited_neighbors(location)) {
-        if (breeze_in_visited_neighbors(location) ||
-            stench_in_visited_neighbors(location))
-            set_safety(location, Safety::danger);
-            return Safety::danger;
+    if (has_visited_and_not_breezy_neighbors(location) && has_visited_and_not_stenchy_neighbors(location)) {
+        set_safety(location, Safety::safe);
+        return Safety::safe;
     }
 
     return Safety::maybe;
@@ -235,7 +242,6 @@ void MyAI::set_stench(bool stench) {
 
 Agent::Action MyAI::move_forward(bool bump) {
     if (!bump) {
-        m_board[m_cur_location.x][m_cur_location.y].visited = true;
         m_board[m_cur_location.x][m_cur_location.y].safety = Safety::safe;
 
         switch (m_cur_direction) {
@@ -314,19 +320,71 @@ void MyAI::process_bump() {
     }
 }
 
+void MyAI::set_visited() {
+    m_board[m_cur_location.x][m_cur_location.y].visited = true;
+}
+
 void MyAI::set_safety(const Location &location, Safety safety) {
-
+    m_board[location.x][location.y].safety = safety;
 }
 
-// TODO
-bool MyAI::has_visited_neighbors(const Location &location) {
-    return false;
+Location MyAI::up(const Location &location) {
+    return Location(location.x, location.y - 1);
 }
 
-bool MyAI::breeze_in_visited_neighbors(const Location &location) {
-    return false;
+Location MyAI::down(const Location &location) {
+    return Location(location.x, location.y + 1);
 }
 
-bool MyAI::stench_in_visited_neighbors(const Location &location) {
-    return false;
+Location MyAI::left(const Location &location) {
+    return Location(location.x - 1, location.y);
+}
+
+Location MyAI::right(const Location &location) {
+    return Location(location.x + 1, location.y);
+}
+
+bool MyAI::has_visited_up_neighbor(const Location &location) {
+    return location.y > 0 && get_state(up(location)).visited;
+}
+
+bool MyAI::has_visited_down_neighbor(const Location &location) {
+    return location.y < m_board.front().size() - 1 && get_state(down(location)).visited;
+}
+
+bool MyAI::has_visited_left_neighbor(const Location &location) {
+    return location.x > 0 && get_state(left(location)).visited;
+}
+
+bool MyAI::has_visited_right_neighbor(const Location &location) {
+    return location.x < m_board.size() - 1 && get_state(right(location)).visited;
+}
+
+bool MyAI::all_neighbors_visited(const Location &location) {
+    bool all_visited = true;
+
+    if (location.x > 0)
+        all_visited &= has_visited_left_neighbor(location);
+    if (location.x < m_board.size() - 1)
+        all_visited &= has_visited_right_neighbor(location);
+    if (location.y > 0)
+        all_visited &= has_visited_up_neighbor(location);
+    if (location.y < m_board.front().size() - 1)
+        all_visited &= has_visited_down_neighbor(location);
+
+    return all_visited;
+}
+
+bool MyAI::has_visited_and_not_breezy_neighbors(const Location &location) {
+    return (has_visited_up_neighbor(location) && !get_state(up(location)).breeze) ||
+           (has_visited_down_neighbor(location) && !get_state(down(location)).breeze) ||
+           (has_visited_left_neighbor(location) && !get_state(left(location)).breeze) ||
+           (has_visited_right_neighbor(location) && !get_state(right(location)).breeze);
+}
+
+bool MyAI::has_visited_and_not_stenchy_neighbors(const Location &location) {
+    return (has_visited_up_neighbor(location) && !get_state(up(location)).stench) ||
+           (has_visited_down_neighbor(location) && !get_state(down(location)).stench) ||
+           (has_visited_left_neighbor(location) && !get_state(left(location)).stench) ||
+           (has_visited_right_neighbor(location) && !get_state(right(location)).stench);
 }
