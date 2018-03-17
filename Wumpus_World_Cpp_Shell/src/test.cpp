@@ -5,10 +5,6 @@
 using std::cout;
 using std::endl;
 
-bool operator==(const Location &lhs, const Location &rhs) {
-    return lhs.x == rhs.x && lhs.y == rhs.y;
-}
-
 void test_init(MyAI &ai) {
     assert(ai.get_cur_direction() == Direction::right);
     assert(ai.get_cur_location() == Location(0, 0));

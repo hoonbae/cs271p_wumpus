@@ -46,6 +46,9 @@ struct Location {
     Location(int x_, int y_) : x(x_), y(y_) {}
     int x;
     int y;
+
+    bool operator==(const Location &other);
+    bool operator!=(const Location &other);
 };
 
 enum class Direction {
@@ -107,35 +110,38 @@ public:
     Action              move_forward(bool bump);
     Action              turn_left();
     Action              turn_right();
-    Action              move_cw(bool stench, bool breeze, bool glitter, bool bump, bool scream);
-    Action              move_countercw(bool stench, bool breeze, bool glitter, bool bump, bool scream);
-    Action              go_home();
-    Action              move_turnaround(bool bump);
-    Action              move_turntohome();
 
-	// Setters
+	Action				check_curloc(bool stench, bool breeze, bool glitter, bool bump, bool scream);
+	Action              go_home();
+    void                go_to(Location destination);
+    void                expand_neighbors(Location current_location);
 
-	// Getters
-  bool  get_pass_home();
+    Location            up(Direction face_direction, Location current_location);
+    Location            down(Direction face_direction, Location current_location);
+    Location            left(Direction face_direction, Location current_location);
+    Location            right(Direction face_direction, Location current_location);
+    Location            NE(Direction face_direction, Location current_location);
+    Location            SE(Direction face_direction, Location current_location);
+    Location            NW(Direction face_direction, Location current_location);
+    Location            SW(Direction face_direction, Location current_location);
+
 
 private:
 
 	// Agent Variables
+    bool    m_first_run;
 	bool 	m_shot_status;
 	bool	m_gold_status;
-  bool  m_dir_cw;
-  bool  m_pass_home;
-  int   m_bump_turn_count;
-  int   m_switch_dir;
-  bool  m_first_action;
-  bool  m_change_dir;
+	bool    m_go_home_mode;
 
-  bool    m_go_home_mode;
+	Location    m_cur_location;
+	Direction   m_cur_direction;
+	Board       m_board;
+	vector<Action> m_actions_taken;
 
-  Location    m_cur_location;
-  Direction   m_cur_direction;
-  Board       m_board;
-  vector<Action> m_actions_taken;
+	vector<Action> m_goto_path;
+    vector<Action> m_turn_to_home;
+	vector<Location> m_stack;
 
 	// ======================================================================
 	// YOUR CODE ENDS

@@ -18,9 +18,21 @@
 // ======================================================================
 
 #include "MyAI.hpp"
-#include "exception"
+#include <exception>
+#include <algorithm>
+#include <stdexcept>
 
 #define MAX_SZ 10
+
+using std::find;
+
+bool Location::operator==(const Location &other) {
+    return this->x == other.x && this->y == other.y;
+}
+
+bool Location::operator!=(const Location &other) {
+    return !(*this == other);
+}
 
 MyAI::MyAI() : Agent()
 {
@@ -28,15 +40,8 @@ MyAI::MyAI() : Agent()
     m_cur_direction = Direction::right;
     m_board.assign(MAX_SZ, vector<State>(MAX_SZ));
     m_go_home_mode = false;
-    m_bump_turn_count = 0;
     m_gold_status = false;
-    m_shot_status = false;
-    m_dir_cw = true;
-    m_pass_home = false;
-    m_switch_dir = 0;
-    m_first_action = true;
-    m_change_dir = false;
-
+    m_first_run = true;
 }
 
 MyAI::~MyAI() {
@@ -55,136 +60,310 @@ Agent::Action MyAI::getAction
 {
     // =====================================
     // DO NOT EDIT
-    set_visited();
     set_stench(stench);
     set_breeze(breeze);
     // =====================================
-
-  if (m_first_action) {
-    m_first_action = false;
-
-    if (stench || breeze) {
-      return Agent::CLIMB;
+    if (get_cur_location() == Location(0, 0) && m_first_run) {
+        m_stack.push_back(m_cur_location);
+        m_first_run = false;
     }
-
-    if (glitter) {
-      m_gold_status = true;
-      m_actions_taken.push_back(Agent::CLIMB);
-      return Agent::GRAB;
-    }
-  }
-
-  if (!m_go_home_mode) {
-    if (m_dir_cw) {
-      return move_cw(stench, breeze, glitter, bump, scream);
-    } else {
-      if (m_change_dir) {
-        return move_turnaround(bump);
-      }
-      return move_countercw(stench, breeze, glitter, bump, scream);
-    }
-  } else {
-    if (m_change_dir) {
-      return move_turntohome();
-    }
-    return go_home();
-  }
-
+    return check_curloc(stench, breeze, glitter, bump, scream);
   // =====================================
   // =====================================
 }
 
+Agent::Action MyAI::check_curloc(bool stench, bool breeze, bool glitter, bool bump, bool scream) {
+    if (!m_goto_path.empty()) {
+        Action last_move = m_goto_path.back();
+        m_goto_path.pop_back();
+        return last_move;
+    }
 
-// Go Home Actions
+
+
+
+    if (m_go_home_mode) {
+        if (!m_turn_to_home.empty()) {
+            Action last_move = m_turn_to_home.back();
+            m_turn_to_home.pop_back();
+            return last_move;
+        }
+
+        if (get_cur_location() == Location(0, 0)) {
+            return CLIMB;
+        } else {
+            return go_home();
+        }
+    }
+
+    if (bump) {
+        Location last_location = m_stack.back();
+        m_stack.pop_back();
+        go_to(last_location);
+    } else if (get_cur_location() == m_stack.back() && cur_location_visited()) {
+        if (m_stack.back() == Location(0, 0)) {
+            return CLIMB;
+        }
+        Location last_location = m_stack.back();
+        m_stack.pop_back();
+        go_to(last_location);
+    } else if (glitter) {
+        m_go_home_mode = true;
+        m_turn_to_home.push_back(TURN_RIGHT);
+        m_turn_to_home.push_back(TURN_RIGHT);
+        return GRAB;
+    } else if (breeze || stench) {
+        if (get_cur_location() == Location (0,0)) {
+            return CLIMB;
+        }
+        m_stack.pop_back();
+        m_goto_path.push_back(FORWARD);     // TO DO: Refactor
+        m_goto_path.push_back(TURN_LEFT);   // TO DO: Refactor
+        m_goto_path.push_back(TURN_LEFT);   // TO DO: Refactor
+    } else if (get_cur_location() != m_stack.back()) {
+        Location last_location = m_stack.back();
+        go_to(last_location);
+    } else {
+        expand_neighbors(get_cur_location());
+        if (m_stack.back() == get_cur_location()) {
+            m_stack.pop_back();
+        }
+        go_to(m_stack.back());
+    }
+    Action last_move = m_goto_path.back();
+    m_goto_path.pop_back();
+
+    if (last_move == FORWARD) {
+        return move_forward(bump);
+    } else if (last_move == TURN_RIGHT) {
+        return turn_right();
+    } else if (last_move == TURN_LEFT) {
+        return turn_left();
+    }
+}
+
+// TODO: refactor
+void MyAI::expand_neighbors(Location current_location) {
+    if (m_cur_direction == Direction::right) {
+        if (m_cur_location.y < m_board.size() - 1 &&
+            !location_visited(Location(m_cur_location.x, m_cur_location.y + 1)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x, m_cur_location.y + 1)) == m_stack.end()) {
+            m_stack.push_back(Location(m_cur_location.x, m_cur_location.y + 1));
+        }
+        if (m_cur_location.y > 0 &&
+            !location_visited(Location(m_cur_location.x, m_cur_location.y - 1)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x, m_cur_location.y - 1)) == m_stack.end()) {
+            m_stack.push_back(Location(m_cur_location.x, m_cur_location.y - 1));
+        }
+        if (m_cur_location.x < m_board.front().size() - 1 &&
+            !location_visited(Location(m_cur_location.x + 1, m_cur_location.y)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x + 1, m_cur_location.y)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x + 1, m_cur_location.y));
+    } else if (m_cur_direction == Direction::up) {
+        if (m_cur_location.x > 0 &&
+            !location_visited(Location(m_cur_location.x - 1, m_cur_location.y)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x - 1, m_cur_location.y)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x - 1, m_cur_location.y));
+        if (m_cur_location.x < m_board.front().size() - 1 &&
+            !location_visited(Location(m_cur_location.x + 1, m_cur_location.y)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x + 1, m_cur_location.y)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x + 1, m_cur_location.y));
+        if (m_cur_location.y < m_board.size() - 1 &&
+            !location_visited(Location(m_cur_location.x, m_cur_location.y + 1)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x, m_cur_location.y + 1)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x, m_cur_location.y + 1));
+    } else if (m_cur_direction == Direction::left) {
+        if (m_cur_location.y > 0 &&
+            !location_visited(Location(m_cur_location.x, m_cur_location.y - 1)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x, m_cur_location.y - 1)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x, m_cur_location.y - 1));
+        if (m_cur_location.y < m_board.size() - 1 &&
+            !location_visited(Location(m_cur_location.x, m_cur_location.y + 1)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x, m_cur_location.y + 1)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x, m_cur_location.y + 1));
+        if (m_cur_location.x > 0 &&
+            !location_visited(Location(m_cur_location.x - 1, m_cur_location.y)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x - 1, m_cur_location.y)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x - 1, m_cur_location.y));
+    } else if (m_cur_direction == Direction::down) {
+        if (m_cur_location.x < m_board.front().size() - 1 &&
+            !location_visited(Location(m_cur_location.x + 1, m_cur_location.y)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x + 1, m_cur_location.y)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x + 1, m_cur_location.y));
+        if (m_cur_location.x > 0 &&
+            !location_visited(Location(m_cur_location.x - 1, m_cur_location.y)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x - 1, m_cur_location.y)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x - 1, m_cur_location.y));
+        if (m_cur_location.y > 0 &&
+            !location_visited(Location(m_cur_location.x, m_cur_location.y - 1)) &&
+            find(m_stack.begin(), m_stack.end(), Location(m_cur_location.x, m_cur_location.y - 1)) == m_stack.end())
+            m_stack.push_back(Location(m_cur_location.x, m_cur_location.y - 1));
+    }
+}
+
 Agent::Action MyAI::go_home() {
     if (!m_actions_taken.empty()) {
-      auto last_action_taken = m_actions_taken.back();
-      m_actions_taken.pop_back();
-      if (last_action_taken == Action::TURN_LEFT) return Action::TURN_RIGHT;
-      else if(last_action_taken == Action::TURN_RIGHT) return Action::TURN_LEFT;
-      return last_action_taken;
+        auto last_action_taken = m_actions_taken.back();
+        m_actions_taken.pop_back();
+        if (last_action_taken == Action::TURN_LEFT) return Action::TURN_RIGHT;
+        else if(last_action_taken == Action::TURN_RIGHT) return Action::TURN_LEFT;
+        return last_action_taken;
     } else {
-      return Action::CLIMB;
+        return Action::CLIMB;
     }
 }
 
-Agent::Action MyAI::move_turnaround(bool bump) {
-  if (m_switch_dir < 2) {
-    m_switch_dir++;
-    return turn_left();
-  } else {
-    m_change_dir = false;
-    m_switch_dir = 0;
-    return move_forward(bump);
-  }
+void MyAI::go_to(Location destination) {
+    if (up(get_cur_direction(), get_cur_location()) == destination) {
+        m_goto_path.push_back(FORWARD);
+    } else if (down(get_cur_direction(), get_cur_location()) == destination) {
+        m_goto_path.push_back(FORWARD);
+        m_goto_path.push_back(TURN_RIGHT);
+        m_goto_path.push_back(TURN_RIGHT);
+    } else if (left(get_cur_direction(), get_cur_location()) == destination) {
+        m_goto_path.push_back(FORWARD);
+        m_goto_path.push_back(TURN_LEFT);
+    } else if (right(get_cur_direction(), get_cur_location()) == destination) {
+        m_goto_path.push_back(FORWARD);
+        m_goto_path.push_back(TURN_RIGHT);
+    } else if (NE(get_cur_direction(), get_cur_location()) == destination) {
+        if (location_visited(right(get_cur_direction(), get_cur_location()))) {
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_LEFT);
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_RIGHT);
+        } else {
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_RIGHT);
+            m_goto_path.push_back(FORWARD);
+        }
+    } else if (SE(get_cur_direction(), get_cur_location()) == destination) {
+        if (location_visited(right(get_cur_direction(), get_cur_location()))) {
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_RIGHT);
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_RIGHT);
+        } else {
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_LEFT);
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_RIGHT);
+            m_goto_path.push_back(TURN_RIGHT);
+        }
+    } else if (NW(get_cur_direction(), get_cur_location()) == destination) {
+        if (location_visited(left(get_cur_direction(), get_cur_location()))) {
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_RIGHT);
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_LEFT);
+        } else {
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_LEFT);
+            m_goto_path.push_back(FORWARD);
+        }
+    } else if (SW(get_cur_direction(), get_cur_location()) == destination) {
+        if (location_visited(left(get_cur_direction(), get_cur_location()))) {
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_LEFT);
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_LEFT);
+        } else {
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_RIGHT);
+            m_goto_path.push_back(FORWARD);
+            m_goto_path.push_back(TURN_LEFT);
+            m_goto_path.push_back(TURN_LEFT);
+        }
+    }
 }
 
-Agent::Action MyAI::move_turntohome() {
-  if (m_switch_dir < 1) {
-    m_switch_dir++;
-    return Action::TURN_RIGHT;
-  } else {
-    m_change_dir = false;
-    m_switch_dir = 0;
-    return Action::TURN_RIGHT;
-  }
+Location MyAI::up(Direction face_direction, Location current_location) {
+    if (face_direction == Direction::up) {
+        return Location(current_location.x, current_location.y + 1);
+    } else if (face_direction == Direction::down) {
+        return Location(current_location.x, current_location.y - 1);
+    } else if (face_direction == Direction::left) {
+        return Location(current_location.x - 1, current_location.y);
+    } else if (face_direction == Direction::right) {
+        return Location(current_location.x + 1, current_location.y);
+    }
 }
-
-// Exploring Perimeter Functions
-Agent::Action MyAI::move_cw(bool stench, bool breeze, bool glitter, bool bump, bool scream) {
-  if (glitter) {
-    m_gold_status = true;
-    m_change_dir = true;
-    m_go_home_mode = true;
-    return Action::GRAB;
-  }
-  if (stench || breeze) {
-    m_dir_cw = false;
-    m_change_dir = true;
-    return Action::SHOOT;
-  }
-  if (bump) {
-    if(m_bump_turn_count == 3) {
-      return Action::CLIMB;
+Location MyAI::down(Direction face_direction, Location current_location) {
+    if (face_direction == Direction::up) {
+        return Location(current_location.x, current_location.y - 1);
+    } else if (face_direction == Direction::down) {
+        return Location(current_location.x, current_location.y + 1);
+    } else if (face_direction == Direction::left) {
+        return Location(current_location.x + 1, current_location.y);
+    } else if (face_direction == Direction::right) {
+        return Location(current_location.x - 1, current_location.y);
     }
-    m_bump_turn_count++;
-    return turn_left();
-  }
-  return move_forward(bump);
 }
-
-Agent::Action MyAI::move_countercw(bool stench, bool breeze, bool glitter, bool bump, bool scream) {
-    if (glitter) {
-      m_gold_status = true;
-      m_change_dir = true;
-      m_go_home_mode = true;
-      return Action::GRAB;
+Location MyAI::left(Direction face_direction, Location current_location) {
+    if (face_direction == Direction::up) {
+        return Location(current_location.x - 1, current_location.y);
+    } else if (face_direction == Direction::down) {
+        return Location(current_location.x + 1, current_location.y - 1);
+    } else if (face_direction == Direction::left) {
+        return Location(current_location.x, current_location.y - 1);
+    } else if (face_direction == Direction::right) {
+        return Location(current_location.x, current_location.y + 1);
     }
-    if (stench || breeze) {
-      m_change_dir = true;
-      m_go_home_mode = true;
-      return Action::SHOOT;
+}
+Location MyAI::right(Direction face_direction, Location current_location) {
+    if (face_direction == Direction::up) {
+        return Location(current_location.x + 1, current_location.y);
+    } else if (face_direction == Direction::down) {
+        return Location(current_location.x - 1, current_location.y);
+    } else if (face_direction == Direction::left) {
+        return Location(current_location.x, current_location.y + 1);
+    } else if (face_direction == Direction::right) {
+        return Location(current_location.x, current_location.y - 1);
     }
-    if (bump) {
-      // moving counter clockwise but haven't passed by home yet
-      if (m_bump_turn_count > 0 && !m_pass_home) {
-        m_bump_turn_count--;
-        return turn_right();
-      }
-      // moving counter clockwise - landed home, first time passing
-      if (m_bump_turn_count == 0 && !m_pass_home) {
-        m_bump_turn_count++;
-        m_pass_home = true;
-        m_actions_taken.push_back(Action::CLIMB);
-        return turn_right();
-      }
-      // moving counter clockwise - have passed home
-      if (m_bump_turn_count > 0 && m_pass_home) {
-        m_bump_turn_count++;
-        return turn_right();
-      }
+}
+Location MyAI::NE(Direction face_direction, Location current_location) {
+    if (face_direction == Direction::up) {
+        return Location(current_location.x + 1, current_location.y + 1);
+    } else if (face_direction == Direction::down) {
+        return Location(current_location.x - 1, current_location.y - 1);
+    } else if (face_direction == Direction::left) {
+        return Location(current_location.x - 1, current_location.y + 1);
+    } else if (face_direction == Direction::right) {
+        return Location(current_location.x + 1, current_location.y - 1);
     }
-    return move_forward(bump);
+}
+Location MyAI::NW(Direction face_direction, Location current_location) {
+    if (face_direction == Direction::up) {
+        return Location(current_location.x - 1, current_location.y + 1);
+    } else if (face_direction == Direction::down) {
+        return Location(current_location.x + 1, current_location.y - 1);
+    } else if (face_direction == Direction::left) {
+        return Location(current_location.x - 1, current_location.y - 1);
+    } else if (face_direction == Direction::right) {
+        return Location(current_location.x + 1, current_location.y + 1);
+    }
+}
+Location MyAI::SE(Direction face_direction, Location current_location) {
+    if (face_direction == Direction::up) {
+        return Location(current_location.x + 1, current_location.y - 1);
+    } else if (face_direction == Direction::down) {
+        return Location(current_location.x - 1, current_location.y + 1);
+    } else if (face_direction == Direction::left) {
+        return Location(current_location.x + 1, current_location.y + 1);
+    } else if (face_direction == Direction::right) {
+        return Location(current_location.x - 1, current_location.y - 1);
+    }
+}
+Location MyAI::SW(Direction face_direction, Location current_location) {
+    if (face_direction == Direction::up) {
+        return Location(current_location.x - 1, current_location.y - 1);
+    } else if (face_direction == Direction::down) {
+        return Location(current_location.x + 1, current_location.y + 1);
+    } else if (face_direction == Direction::left) {
+        return Location(current_location.x + 1, current_location.y - 1);
+    } else if (face_direction == Direction::right) {
+        return Location(current_location.x - 1, current_location.y + 1);
+    }
 }
 
 
