@@ -130,8 +130,6 @@ private:
 
 	// Agent Variables
     bool    m_first_run;
-	bool 	m_shot_status;
-	bool	m_gold_status;
 	bool    m_go_home_mode;
 
 	Location    m_cur_location;

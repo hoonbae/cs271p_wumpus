@@ -20,11 +20,13 @@
 #include "MyAI.hpp"
 #include <exception>
 #include <algorithm>
-#include <stdexcept>
+#include <iostream>
 
 #define MAX_SZ 10
 
 using std::find;
+using std::cout;
+using std::endl;
 
 bool Location::operator==(const Location &other) {
     return this->x == other.x && this->y == other.y;
@@ -40,7 +42,6 @@ MyAI::MyAI() : Agent()
     m_cur_direction = Direction::right;
     m_board.assign(MAX_SZ, vector<State>(MAX_SZ));
     m_go_home_mode = false;
-    m_gold_status = false;
     m_first_run = true;
 }
 
@@ -80,22 +81,18 @@ Agent::Action MyAI::check_curloc(bool stench, bool breeze, bool glitter, bool bu
     }
 
 
-
-
     if (m_go_home_mode) {
         if (!m_turn_to_home.empty()) {
             Action last_move = m_turn_to_home.back();
             m_turn_to_home.pop_back();
             return last_move;
         }
-
         if (get_cur_location() == Location(0, 0)) {
             return CLIMB;
         } else {
             return go_home();
         }
     }
-
     if (bump) {
         Location last_location = m_stack.back();
         m_stack.pop_back();
@@ -132,7 +129,6 @@ Agent::Action MyAI::check_curloc(bool stench, bool breeze, bool glitter, bool bu
     }
     Action last_move = m_goto_path.back();
     m_goto_path.pop_back();
-
     if (last_move == FORWARD) {
         return move_forward(bump);
     } else if (last_move == TURN_RIGHT) {
@@ -141,7 +137,6 @@ Agent::Action MyAI::check_curloc(bool stench, bool breeze, bool glitter, bool bu
         return turn_left();
     }
 }
-
 // TODO: refactor
 void MyAI::expand_neighbors(Location current_location) {
     if (m_cur_direction == Direction::right) {
@@ -366,15 +361,15 @@ Location MyAI::SW(Direction face_direction, Location current_location) {
     }
 }
 
-
 const Board& MyAI::get_board() {
 	return m_board;
 }
 
 const State& MyAI::get_state(const Location &location) {
-    if (location.x < 0 || location.x >= m_board.size() ||
-        location.y < 0 || location.y >= m_board.front().size())
+    if (location.x < 0 || location.x >= m_board.front().size() ||
+        location.y < 0 || location.y >= m_board.size()) {
         throw std::runtime_error("bad location");
+    }
     return m_board[location.x][location.y];
 }
 
@@ -422,22 +417,22 @@ void MyAI::set_stench(bool stench) {
 Agent::Action MyAI::move_forward(bool bump) {
     if (!bump) {
         m_board[m_cur_location.x][m_cur_location.y].safety = Safety::safe;
-
+        m_board[m_cur_location.x][m_cur_location.y].visited = true;
         switch (m_cur_direction) {
             case Direction::up:
-                if (m_cur_location.x < m_board.size()) m_cur_location.x++;
+                if (m_cur_location.y < m_board.size() - 1) m_cur_location.y++;
                 break;
 
             case Direction::down:
-                if (m_cur_location.x > 0) m_cur_location.x--;
+                if (m_cur_location.y > 0) m_cur_location.y--;
                 break;
 
             case Direction::left:
-                if (m_cur_location.x > 0)m_cur_location.y--;
+                if (m_cur_location.x > 0)m_cur_location.x--;
                 break;
 
             case Direction::right:
-                if (m_cur_location.y < m_board.front().size()) m_cur_location.y++;
+                if (m_cur_location.x < m_board.size() - 1) m_cur_location.x++;
                 break;
         }
     } else {
@@ -492,10 +487,10 @@ Agent::Action MyAI::turn_right() {
 }
 
 void MyAI::process_bump() {
-    if (m_cur_direction == Direction::right) {
-        for (auto &col : m_board) col.resize(m_cur_location.y + 1);
-    } else if (m_cur_direction == Direction::up) {
-        m_board.resize(m_cur_location.x + 1);
+    if (m_cur_direction == Direction::right) { // restrict cols
+        for (auto &col : m_board) col.resize(m_cur_location.x + 1);
+    } else if (m_cur_direction == Direction::up) { // restrict rows
+        m_board.resize(m_cur_location.y + 1);
     }
 }
 
@@ -508,11 +503,11 @@ void MyAI::set_safety(const Location &location, Safety safety) {
 }
 
 Location MyAI::up(const Location &location) {
-    return Location(location.x, location.y - 1);
+    return Location(location.x, location.y + 1);
 }
 
 Location MyAI::down(const Location &location) {
-    return Location(location.x, location.y + 1);
+    return Location(location.x, location.y - 1);
 }
 
 Location MyAI::left(const Location &location) {
@@ -524,19 +519,23 @@ Location MyAI::right(const Location &location) {
 }
 
 bool MyAI::has_visited_up_neighbor(const Location &location) {
-    return location.y > 0 && get_state(up(location)).visited;
+    return location.y < m_board.size() - 1 &&
+           (up(location) == m_cur_location || get_state(up(location)).visited);
 }
 
 bool MyAI::has_visited_down_neighbor(const Location &location) {
-    return location.y < m_board.front().size() - 1 && get_state(down(location)).visited;
+    return location.y > 0 &&
+           (down(location) == m_cur_location || get_state(down(location)).visited);
 }
 
 bool MyAI::has_visited_left_neighbor(const Location &location) {
-    return location.x > 0 && get_state(left(location)).visited;
+    return location.x > 0 &&
+           (left(location) == m_cur_location || get_state(left(location)).visited);
 }
 
 bool MyAI::has_visited_right_neighbor(const Location &location) {
-    return location.x < m_board.size() - 1 && get_state(right(location)).visited;
+    return location.x < m_board.front().size() - 1 &&
+           (right(location) == m_cur_location || get_state(right(location)).visited);
 }
 
 bool MyAI::all_neighbors_visited(const Location &location) {
